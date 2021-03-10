@@ -1,0 +1,23 @@
+
+デフォルトはMySQLが動いているホストのタイムゾーンというか時刻を使う
+
+現在の設定の確認方法
+show variables like '%time_zone%';
+
+
+変更するには
+/etc/my.cnf を編集
+default-time-zone = '-06:00'
+default-time-zone = 'Asia/Tokyo'
+その後、mysqlを再起動
+service mysql restart
+
+こんな方法もあるようだ
+https://dev.mysql.com/doc/refman/8.0/en/time-zone-support.html
+SET GLOBAL time_zone = '+09:00';
+いや、now()の時間がかわらない...
+
+
+Azure MySQL
+https://docs.microsoft.com/en-us/azure/mysql/howto-server-parameters#working-with-the-time-zone-parameter
+https://docs.microsoft.com/en-us/azure/mysql/howto-configure-server-parameters-using-cli#working-with-the-time-zone-parameter

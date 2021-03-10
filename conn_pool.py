@@ -66,7 +66,7 @@ def test1():
     print("t1 sleep...")
     time.sleep(5)
 
-    sql = "insert into dummy1 (name, category_id) value (%s, %s)"
+    sql = "insert into dummy1 (name, category_id, ts) value (%s, %s, now())"
     cur.execute(sql, ["あああ", 5])
     id = cur.lastrowid
     print("t1 rowcount", cur.rowcount)
