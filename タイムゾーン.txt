@@ -15,9 +15,13 @@ service mysql restart
 こんな方法もあるようだ
 https://dev.mysql.com/doc/refman/8.0/en/time-zone-support.html
 SET GLOBAL time_zone = '+09:00';
-いや、now()の時間がかわらない...
+いや、now()の時間がかわらなかった...
+タイムゾーンを変更できれば、now()も変わるのでは
+
+その他のタイムゾーンの変更方法は？
 
 
-Azure MySQL
+Azure MySQL は公式ページに記載あり
 https://docs.microsoft.com/en-us/azure/mysql/howto-server-parameters#working-with-the-time-zone-parameter
 https://docs.microsoft.com/en-us/azure/mysql/howto-configure-server-parameters-using-cli#working-with-the-time-zone-parameter
+
