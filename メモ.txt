@@ -1,0 +1,56 @@
+MySQL 8.0
+
+REPEATABLE READ で特に問題が確認できなかった（問題あり↓参照）
+このレベルのままでよい気がする
+
+トランザクション開始時点でのデータベースの状態のスナップショットに対してDMLが処理されることになる
+
+読み取りは一貫性があるが、更新しようとすると他のトランザクションの結果が見えてしまう
+つまり、読み取ったレコードに対して他のトランザクションが追加・変更・削除をコミットできてしまう、何もしないとき。
+そして、それがこちらのトランザクションで更新とか削除とかのときに見えてしまう。
+
+あとで更新する予定のレコード(テーブル)については、
+selectだけだとだめで、select for updateすると、
+そのテーブルについては、他のトランザクションは、update、insert、delete, select for updateが待機させられる
+同じテーブルの１つ目のトランザクションにはまったく関係しないレコードの操作であっても待機になる
+他のトランザクションの通常のselectはブロックされない(serializableでも、ただし共有ロックがかかる)
+
+select for updateされていないテーブルは他のトランザクションでもレコードの操作可能
+
+select for updateを使うなら、デッドロックには気を付けないといけない
+スレッドA  select for update dummy1 →  update dummy2
+スレッドB  select for update dummy2 →  update dummy1
+で以下のエラーが発生
+mysql.connector.errors.InternalError: 1213 (40001): Deadlock found when trying to get lock; try restarting transaction
+
+select for updateするテーブルの順序を同じにしておけばデッドロックは起きないはず
+
+
+SERIALIZABLEでも同様の結論であるが、
+for updateをつけない通常のselectでも共有ロックがかかるため、
+同じレコードに対してt1とt2で通常のselectを実行し、
+t1、t2ともにそのレコードを更新しようとすると、
+t1でデッドロックが発生した
+これはREPEATABLE READでは起きない
+この場合、先に実行されたt2の更新が、あとからきたt1の更新時に見えてしまい、
+t1の更新結果がrowcount=0になった
+
+SERIALIZABLEでもselect for updateをつかうとブロックされる(最新のスナップショットの状態を取得できる)ので、よさそう
+
+
+https://stackoverflow.com/questions/65251249/mysql-gap-lock-behavior-isnt-in-line-with-expectation
+ギャップロックが期待通りではない
+ギャップロックの範囲でなければ、同じテーブルでも更新したりできるようなことが書いてある
+３レコードしかないテーブルだと、更新範囲に最も近いレコードが前後２つがギャップロックの対象になってしまって、
+それで他のトランザクションの更新がブロックされる挙動となっていたと考えられる
+
+
+
+
+テーブルのあるカラムにある値がなければ、その値を持ったレコード追加のパターン
+その値でテーブルをselect for updateする
+他のトランザクションも同じテーブルにselect for updateしていれば、ブロックされる
+
+
+
+

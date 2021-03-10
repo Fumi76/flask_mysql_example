@@ -1,0 +1,11 @@
+create table dummy1 (id int not null auto_increment, name varchar(100) not null, category_id int not null, primary key (id));
+
+CREATE TABLE `dummy1` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) NOT NULL,
+  `category_id` int NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+
