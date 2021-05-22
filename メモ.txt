@@ -129,3 +129,5 @@ UNLOCK TABLES;
 トランザクションの一番最後にUNLOCK TABLESして、暗黙的にコミットさせるか、
 UNLOCK TABLESを使わずに上記の別案を採用するかになる
 
+Concurrency control (並行性制御) テーブル
+
