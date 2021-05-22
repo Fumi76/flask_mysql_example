@@ -24,7 +24,7 @@ select for updateを使うなら、デッドロックには気を付けないと
 mysql.connector.errors.InternalError: 1213 (40001): Deadlock found when trying to get lock; try restarting transaction
 
 select for updateするテーブルの順序を同じにしておけばデッドロックは起きないはず
-
+(ロック対象のレコードが複数ある場合も大丈夫か？)
 
 SERIALIZABLEでも同様の結論であるが、
 for updateをつけない通常のselectでも共有ロックがかかるため、
@@ -52,5 +52,78 @@ https://stackoverflow.com/questions/65251249/mysql-gap-lock-behavior-isnt-in-lin
 他のトランザクションも同じテーブルにselect for updateしていれば、ブロックされる
 
 
+https://zenn.dev/tockn/articles/4268398c8ec9a9
+select for updateで該当０件のときに、
+実質共有ロックになり、２つのスレッドが通過し、
+結果、その後のupdateで片方にデッドロックが発生したと説明してる
 
+同じような条件(テーブル空、インデックス作成カラムが条件)でpythonで検証したが、select for updateで片方は待機した
+この記事は、MySQL 5.6のようであるが、自分の検証は8.0、この違いか、違う、再現した
+
+https://dev-dub.hatenablog.com/entry/2020/10/18/203440
+MySQL 8.0.20 (InnoDB): INDEX 有無によって、実在しない行に対する SELECT ... FOR UPDATE とそれに続く INSERT の挙動が異なる
+
+この記事もインデックスがある場合、select for updateが待機せず、デッドロックが発生したとある
+
+https://stackoverflow.com/questions/43827740/mysql-innodb-deadlock-between-select-for-update-and-insert
+
+たしかに発生するパターンと発生しないパターンがあることがわかった
+select for updateの条件に指定する値と、その対象テーブルにすでにあるレコードの状態
+(select for updateの条件に一致するものはない）が関係してくるようだ
+
+SERIALIZABLEかREPEATABLE READかは関係なかった
+
+テーブルにcategory_id=0,2,3,4があり、select for updateでcategory_id=0（該当なし）
+とした場合、
+T1が先にinsertまで完了していると、T2のselect for updateは待機する
+T1がselect for updateした後、insertをまだ実行していない時点で、
+T2がselect for updateを実行すると、待機しないで通過する
+
+select for updateがcategory_id=0でも999でも、テーブルが2,3,4,5のとき、
+待機せずに通過した。該当レコードが無い場合は基本、通過すると思われる
+
+どちらもinsertする前であれば、select for updateはどちらも通過する
+name='BBB' for updateでも待機しないで通過した
+
+T1がinsertまで完了した時点(コミット前)でT2がselect for updateすると待機する
+T2は見えてないはずのレコードに影響を受けているのはMySQLの仕組みによるものか...
+これも必ずしもそうなるわけではないようだ、検証していると
+
+T1のinsert時にデッドロックエラーが出る
+mysql.connector.errors.InternalError: 1213 (40001): Deadlock found when trying to get lock; try restarting transaction
+
+対処法
+・エラーになったトランザクションを再試行する
+単純に再試行してはいけない場合もユースケース・処理内容によってはありそうな気がするが...
+・テーブルロックを使用する
+LOCK TABLES users WRITE;
+-- 処理
+UNLOCK TABLES;
+・何もしない（ユーザーにデータ重複なりのエラーを表示、再試行してもらう）
+
+手っ取り早いのは、テーブルロックか、以下でもよさそう
+ロック用のテーブル・レコードを別途用意し、使用する
+（常にロック対象レコードがある状態でそれをロックする）
+select for updateの対象のレコードが有れば、T2は待機する
+
+処理パターン
+同じ「名前」のレコードがあればそのIDを使用し、なければレコードを新規追加する
+
+
+LOCK TABLESも併用しているが、
+T1のコミットしていないレコードがT2で見えているようだ
+
+https://dev.mysql.com/doc/refman/8.0/ja/lock-tables.html
+LOCK TABLES はトランザクションセーフではないため、テーブルをロックしようとする前に、アクティブなトランザクションをすべて暗黙的にコミットします。
+
+UNLOCK TABLES は、アクティブなトランザクションをすべて暗黙的にコミットしますが、これが行われるのは、テーブルロックを取得するために LOCK TABLES が使用された場合のみです。 たとえば、次の一連のステートメントでは、UNLOCK TABLES がグローバルな読み取りロックを解放しますが、有効なテーブルロックがないためにトランザクションはコミットされません。
+FLUSH TABLES WITH READ LOCK;
+START TRANSACTION;
+SELECT ... ;
+UNLOCK TABLES;
+
+ということは、少なくともトランザクションの途中でUNLOCK TABLESしてはいけない
+(その時点でコミットされてしまう)
+トランザクションの一番最後にUNLOCK TABLESして、暗黙的にコミットさせるか、
+UNLOCK TABLESを使わずに上記の別案を採用するかになる
 
