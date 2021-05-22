@@ -32,18 +32,18 @@ def test1():
     # select id でも select count(*) as num でも同じ結果
     
     print('T1 select for update...')
-    #sql = "select count(*) as num from dummy1 where name = %s for update"
-    #cur.execute(sql, ["BBB"])
-    sql = "select * from dummy1 where category_id = %s for update"
-    cur.execute(sql, [1])
+    sql = "select count(*) as num from dummy1 where name = %s for update"
+    cur.execute(sql, ["BBB"])
+    #sql = "select * from dummy1 where category_id = %s for update"
+    #cur.execute(sql, [1])
     print('T1 select for update done')
     result = cur.fetchone()
     print("T1", result)
-    #print('T1 sleep1...')
-    #time.sleep(10)
-    #print('T1 sleep1 done')
-    if result is None:
-    #if result['num'] == 0:
+    print('T1 sleep1...')
+    time.sleep(10)
+    print('T1 sleep1 done')
+    #if result is None:
+    if result['num'] == 0:
         sql = "insert into dummy1 (name, category_id) values ('BBB', 1)"
         cur.execute(sql, [])
         print('T1 insert rowcount', cur.rowcount)
@@ -90,16 +90,16 @@ def test2():
     # 主キー、ユニークキーで select ～ for update しないと、テーブル全体でロックになったり、ある程度の範囲でロックがかかったりする。とのこと
     # name じゃなくて int型のcategory_idでも同じ挙動
     
-    # sql = "select count(*) as num from dummy1 where name = %s for update"
-    sql = "select * from dummy1 where category_id = %s for update"
+    sql = "select count(*) as num from dummy1 where name = %s for update"
+    #sql = "select * from dummy1 where category_id = %s for update"
     print('T2 select for update...')
-    #cur.execute(sql, ["BBB"])
-    cur.execute(sql, [1])
+    cur.execute(sql, ["BBB"])
+    #cur.execute(sql, [1])
     print('T2 select for update done')
     result = cur.fetchone()
     print("T2", result)
-    if result is None:
-    #if result['num'] == 0:
+    #if result is None:
+    if result['num'] == 0:
         sql = "insert into dummy1 (name, category_id) values ('BBB', 1)"
         cur.execute(sql, [])
         print('T2 insert rowcount', cur.rowcount)

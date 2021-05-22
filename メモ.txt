@@ -91,6 +91,8 @@ T2は見えてないはずのレコードに影響を受けているのはMySQL�
 
 T1のinsert時にデッドロックエラーが出る
 mysql.connector.errors.InternalError: 1213 (40001): Deadlock found when trying to get lock; try restarting transaction
+デッドロックなのでどちらのトランザクションも待機になり、１つにデッドロックエラーが発生し、ロールバックされ、もう片方は処理が進み、コミットということになる
+
 
 対処法
 ・エラーになったトランザクションを再試行する
